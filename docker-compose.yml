@@ -1,7 +1,7 @@
 services:
   app:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
       target: runner
     image: ai-website-cloner:latest
@@ -31,7 +31,7 @@ services:
 
   dev:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile.dev
     image: ai-website-cloner:dev
     container_name: ai-website-cloner-dev
@@ -47,7 +47,7 @@ services:
       - path: .env
         required: false
     volumes:
-      - .:/app
+      - ./frontend:/app
       - /app/node_modules
       - /app/.next
     healthcheck:
@@ -62,7 +62,7 @@ services:
   # ─────────────────────────────────────────────────────────────────────
   cms:
     build:
-      context: ./cms
+      context: ./backend
       dockerfile: Dockerfile
     image: payload-cms:latest
     container_name: payload-cms

@@ -17,7 +17,12 @@ The migration process is governed by a strict **split-control architecture**:
 
 > **Important:** Do not clone this template repository directly. Use GitHub's **Use this template** button to create your own copy first.
 
-After downloading and opening your new repository locally, run `npm install` to prepare your workspace.
+After downloading and opening your new repository locally, you must install dependencies for both engines separately:
+
+```bash
+cd frontend && npm install
+cd ../backend && npm install
+```
 
 ### Step 1: Synchronize Skills
 Before invoking your AI agent, ensure the migration commands are synchronized across all supported platforms by running the multi-skill sync engine:

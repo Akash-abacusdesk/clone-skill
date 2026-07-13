@@ -26,7 +26,7 @@ This is a **single-URL command**. If multiple URLs are provided, reject with: "T
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Configure File Handling Environment for this migration test run:
 
-  [local]  — Store uploads on local disk (cms/media/)
+  [local]  — Store uploads on local disk (backend/media/)
   [r2]     — Store uploads in Cloudflare R2 bucket
 
 Enter choice (local / r2):
@@ -52,17 +52,17 @@ Store the user's response as `FILE_HANDLING_MODE`. This variable controls:
 1. Run `npm run build` to verify the Next.js + shadcn/ui + Tailwind v4 scaffold compiles.
 2. Create output directories if they don't exist:
    - `docs/research/`, `docs/research/components/`, `docs/design-references/`, `scripts/`
-   - `cms/`, `cms/collections/`, `cms/globals/`, `cms/access/`, `cms/seed/`
+   - `cms/`, `backend/src/collections/`, `cms/globals/`, `cms/access/`, `cms/seed/`
 
 ### Step 3: Load Templates
 
 Read the reference templates from `.claude/skills/migrate-headless-payload/templates/`:
-- `cms/payload.config.ts.template`
-- `cms/collections/Pages.ts.template`
-- `cms/collections/DynamicCollection.ts.template`
-- `cms/globals/SiteConfig.ts.template`
-- `cms/access/rbac.ts.template`
-- `cms/seed/webhook-config.ts.template`
+- `backend/payload.config.ts.template`
+- `backend/src/collections/Pages.ts.template`
+- `backend/src/collections/DynamicCollection.ts.template`
+- `backend/src/globals/SiteConfig.ts.template`
+- `backend/src/access/rbac.ts.template`
+- `backend/src/seed/webhook-config.ts.template`
 - `frontend/lib/payload.ts.template`
 - `frontend/api/revalidate/route.ts.template`
 
@@ -265,12 +265,12 @@ After Phase 1 completes, you have: page topology, behaviors, component specs, da
 **Each builder agent in Track A** receives:
 - The component spec file (inline, as in clone-website)
 - The relevant section from `data-migration-map.json` showing which fields to fetch
-- The `src/lib/payload.ts` client module API (already generated — see below)
+- The `frontend/src/lib/payload.ts` client module API (already generated — see below)
 - Instructions to replace ALL hardcoded text/images with API data
 
 #### A.1: Generate Shared Payload Client
 
-Before dispatching any builder, create `src/lib/payload.ts`:
+Before dispatching any builder, create `frontend/src/lib/payload.ts`:
 
 ```typescript
 // Use the frontend/lib/payload.ts.template as reference
@@ -282,14 +282,14 @@ Before dispatching any builder, create `src/lib/payload.ts`:
 
 #### A.2: Generate TypeScript Interfaces
 
-Create `src/types/payload.ts` with interfaces matching every Single Type, Collection Type, and Global defined in `data-migration-map.json`. These are used by both the frontend fetch functions and the page components.
+Create `frontend/frontend/src/types/payload.ts` with interfaces matching every Single Type, Collection Type, and Global defined in `data-migration-map.json`. These are used by both the frontend fetch functions and the page components.
 
 #### A.3: Generate Page Routes
 
 For each Single Type, generate a static page route:
-- `src/app/page.tsx` (Home)
-- `src/app/about/page.tsx` (About)
-- `src/app/contact/page.tsx` (Contact)
+- `frontend/src/app/page.tsx` (Home)
+- `frontend/src/app/about/page.tsx` (About)
+- `frontend/src/app/contact/page.tsx` (Contact)
 
 Each page file:
 1. Imports the component sections (same as clone-website assembly)
@@ -298,14 +298,14 @@ Each page file:
 4. Components render the data — NO hardcoded strings
 
 For each Collection Type, generate:
-- `src/app/products/page.tsx` — calls `fetchCollectionList<Product>('products')`, renders a grid
-- `src/app/products/[slug]/page.tsx` — calls `fetchCollectionItem<Product>('products', params.slug)`, renders detail view
+- `frontend/src/app/products/page.tsx` — calls `fetchCollectionList<Product>('products')`, renders a grid
+- `frontend/src/app/products/[slug]/page.tsx` — calls `fetchCollectionItem<Product>('products', params.slug)`, renders detail view
 - You MUST programmatically generate a complete `generateStaticParams()` function that fetches all target collection rows from the CMS at build time to pre-render every path.
 - You MUST ensure all dynamic templates include `export const dynamicParams = true;` to handle mid-tier runtime additions cleanly.
 
 #### A.4: Generate Layout with Global Data
 
-Update `src/app/layout.tsx` to:
+Update `frontend/src/app/layout.tsx` to:
 1. Fetch `fetchGlobal<SiteConfig>('site-config')` 
 2. Pass global data (logo, nav, social links) to header/footer components
 3. Keep the existing font and CSS configuration
@@ -328,7 +328,7 @@ Use the same worktree-based parallel dispatch as clone-website. Each builder get
 
 #### B.1: Generate RBAC Access Module
 
-Write `cms/access/rbac.ts` using the template, customized for the discovered roles:
+Write `backend/src/access/rbac.ts` using the template, customized for the discovered roles:
 
 ```typescript
 // Exports:
@@ -342,10 +342,10 @@ Write `cms/access/rbac.ts` using the template, customized for the discovered rol
 
 #### B.2: Generate Single Type Collections
 
-For each Single Type in `data-migration-map.json`, generate a collection file in `cms/collections/`:
+For each Single Type in `data-migration-map.json`, generate a collection file in `backend/src/collections/`:
 
 ```typescript
-// Example: cms/collections/Pages.ts
+// Example: backend/src/collections/Pages.ts
 // - Uses the Pages.ts.template as base
 // - Populates the fields array from data-migration-map.json
 // - CRITICAL RBAC CONSTRAINT: You MUST import clientCannotCreateOrDelete from '../access/rbac'
@@ -361,7 +361,7 @@ For each Single Type in `data-migration-map.json`, generate a collection file in
 For each Collection Type, generate a collection file:
 
 ```typescript
-// Example: cms/collections/Products.ts
+// Example: backend/src/collections/Products.ts
 // - Uses the DynamicCollection.ts.template as base
 // - Populates fields from data-migration-map.json
 // - Imports fullCRUD from '../access/rbac'
@@ -372,11 +372,11 @@ For each Collection Type, generate a collection file:
 
 #### B.4: Generate Globals
 
-Write `cms/globals/SiteConfig.ts` using the template, populated with the discovered global fields.
+Write `backend/src/globals/SiteConfig.ts` using the template, populated with the discovered global fields.
 
 #### B.5: Generate Payload Config
 
-Write `cms/payload.config.ts` using the template:
+Write `backend/payload.config.ts` using the template:
 - Uses `@payloadcms/db-postgres` adapter with `process.env.DATABASE_URI`
 - If `FILE_HANDLING_MODE === 'r2'`: includes `@payloadcms/plugin-cloud-storage` with R2 adapter
 - If `FILE_HANDLING_MODE === 'local'`: uses default local upload with `staticDir: './media'`
@@ -386,19 +386,19 @@ Write `cms/payload.config.ts` using the template:
 
 #### B.6: Generate Webhook Seed
 
-Write `cms/seed/webhook-config.ts` — a script that registers an `afterChange` hook on all collections to POST to `${process.env.FRONTEND_URL}/api/revalidate` with the `REVALIDATION_SECRET` bearer token.
+Write `backend/src/seed/webhook-config.ts` — a script that registers an `afterChange` hook on all collections to POST to `${process.env.FRONTEND_URL}/api/revalidate` with the `REVALIDATION_SECRET` bearer token.
 
 #### B.7: Generate CMS Package Files
 
-Write `cms/package.json` and `cms/tsconfig.json` with all Payload 3.x dependencies.
+Write `backend/package.json` and `backend/tsconfig.json` with all Payload 3.x dependencies.
 
 ### Track Merge
 
 After both tracks complete:
 1. Merge all worktree branches into main
-2. Resolve any conflicts (primarily in `src/types/` which both tracks may touch)
+2. Resolve any conflicts (primarily in `frontend/src/types/` which both tracks may touch)
 3. Run `npm run build` on the frontend — must pass clean
-4. Run `npx tsc --noEmit` in `cms/` — must pass clean
+4. Run `npx tsc --noEmit` in `backend/` — must pass clean
 
 ---
 
@@ -408,7 +408,7 @@ After the dual-track merge, wire the revalidation pipeline:
 
 ### 3.1: Generate Revalidation API Route
 
-Write a secure Next.js Route Handler at `src/app/api/revalidate/route.ts` (not `page.tsx`) using the template:
+Write a secure Next.js Route Handler at `frontend/src/app/api/revalidate/route.ts` (not `page.tsx`) using the template:
 
 ```typescript
 // POST handler that:
@@ -456,7 +456,7 @@ Add services for the CMS and PostgreSQL to `docker-compose.yml`:
 
 ```yaml
 cms:
-  build: ./cms
+  build: ./backend
   ports: ["3001:3001"]
   environment:
     - DATABASE_URI=postgresql://payload:payload@postgres:5432/payload
@@ -499,7 +499,7 @@ images: {
 npm run build
 
 # CMS TypeScript must pass
-cd cms && npx tsc --noEmit
+cd backend && npx tsc --noEmit
 
 # Docker compose must be valid
 docker compose config --quiet
