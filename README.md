@@ -7,9 +7,9 @@ This repository is an **automated headless migration engine**. It leverages AI c
 ## Core Architecture Philosophy: Split-Control
 
 The migration process is governed by a strict **split-control architecture**:
-- **Frontend Engine**: The AI Agent codes pixel-perfect frontend layouts in Next.js. The CMS client has **0% UI layout control**. The presentation layer is fully locked, fetching data securely via the Payload REST API.
-- **Backend Data Container**: Payload CMS acts purely as a structured data container. It enforces strict Role-Based Access Control (RBAC) boundaries, explicitly blocking clients from creating or deleting single page layouts, ensuring the structure remains untouched while empowering them to manage dynamic collections and data points.
-- **Rigid ISR**: The frontend is fully optimized for Incremental Static Regeneration (ISR). The migration engine pre-renders all dynamic routes at build time via programmatic `generateStaticParams()` and invalidates cache on-demand via secure webhook integration on every CMS update.
+- **Serverless Frontend Engine**: The Next.js frontend is built as a static/ISR layer and deployed directly to a serverless global CDN (like Cloudflare Pages), bypassing VPS resource footprints entirely. The AI Agent codes pixel-perfect frontend layouts where the CMS client has **0% UI layout control**. 
+- **Isolated Backend Data Container**: The backend Payload 3.x instance runs as an isolated, resource-constrained container on a dedicated Linux VPS, linked to a centralized PostgreSQL instance. It enforces strict Role-Based Access Control (RBAC) boundaries, ensuring the layout structure remains untouched while empowering clients to manage dynamic collections.
+- **Rigid ISR via Webhooks**: The CDN frontend is fully optimized for Incremental Static Regeneration (ISR). The migration engine pre-renders all dynamic routes at build time via programmatic `generateStaticParams()` and invalidates cache on-demand via secure webhook integration on every CMS update.
 
 ---
 
@@ -60,8 +60,8 @@ Upon a successful migration run, the tool outputs a fully scaffolded dual-engine
 
 | Output Artifact | Description |
 |-----------------|-------------|
-| `frontend/` | The locked, ISR-optimized Next.js 16 frontend folder. Features `generateStaticParams` and rigid fetch cache policies. |
-| `backend/` | The standalone Payload 3.x backend workspace folder. Contains PostgreSQL schema files, RBAC access layers, and webhook configurations. |
+| `frontend/` | The CDN-targeted Next.js source folder. Built for static/ISR deployment to a global CDN like Cloudflare Pages. |
+| `backend/` | The VPS-targeted Docker workspace container source. Contains Payload 3.x schemas, PostgreSQL links, and RBAC layers. |
 | `docs/research/` | Left at root to house the initial reconnaissance maps (`data-migration-map.json`). |
 | `docker-compose.yml` | The global coordinator managing the frontend, backend, and PostgreSQL containers. |
 
@@ -100,18 +100,21 @@ Upon a successful migration run, the tool outputs a fully scaffolded dual-engine
 ## Commands
 
 ```bash
-cd frontend && npm run dev       # Start Next.js frontend dev server
-cd frontend && npm run build     # Compile production Next.js frontend
-cd frontend && npm run check     # Run lint + typecheck + build
+# Local Development
+cd frontend && npm run dev       # Launch frontend development server
+cd backend && npm run dev        # Launch backend CMS development server
+
+# Production Compilations
+cd frontend && npm run build     # Verify CDN-ready Next.js static compilation
 ```
 
 ### Docker Infrastructure
 
-Run the full dual-engine stack (Frontend, CMS, Postgres) securely via Docker:
+The `docker-compose.yml` file is designed specifically for your host VPS. It manages only the backend services (the CMS container and the shared `postgres` service), while frontend builds are handled directly via your CDN's Git integration.
 
 ```bash
-docker compose up -d           # Run the full production-ready stack
-docker compose up dev --build  # Run frontend in dev mode on port 3001
+# VPS Production Backend Controls
+docker compose up -d backend db  # Spin up the CMS container and the Postgres instance on the VPS
 ```
 
 ---
