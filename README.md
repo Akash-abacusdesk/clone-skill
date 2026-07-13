@@ -1,6 +1,6 @@
 # Website Reverse-Engineer & Headless Migration Template
 
-<a href="https://github.com/JCodesMore/ai-website-cloner-template/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a> <a href="https://github.com/JCodesMore/ai-website-cloner-template/stargazers"><img src="https://img.shields.io/github/stars/JCodesMore/ai-website-cloner-template?style=flat" alt="Stars" /></a> <a href="https://discord.gg/hrTSX5yTpB"><img src="https://img.shields.io/discord/1400896964597383279?label=discord" alt="Discord" /></a>
+<a href="https://github.com/Akash-abacusdesk/clone-skill/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a> <a href="https://github.com/Akash-abacusdesk/clone-skill/stargazers"><img src="https://img.shields.io/github/stars/Akash-abacusdesk/clone-skill?style=flat" alt="Stars" /></a>
 
 This repository is an **automated headless migration engine**. It leverages AI coding agents to reverse-engineer any website and migrate it into a production-ready, twin-engine codebase built on **Next.js 16** (standalone output), **Tailwind CSS v4**, and **Payload CMS 3.x** backed by a **PostgreSQL** database layer.
 
@@ -55,10 +55,10 @@ Upon a successful migration run, the tool outputs a fully scaffolded dual-engine
 
 | Output Artifact | Description |
 |-----------------|-------------|
-| `docs/research/data-migration-map.json` | The architectural classification breakdown mapping DOM elements to typed Payload schema definitions. |
-| `src/app/` | The locked, ISR-optimized Next.js frontend routes featuring programmatic `generateStaticParams` and rigid fetch cache policies. |
-| `cms/` | The standalone Payload 3.x backend workspace featuring locked Page schemas, active RBAC modules, and automated webhook seeding. |
-| `docker-compose.yml` | The unified multi-container system tracking the frontend service, standalone CMS service, and shared PostgreSQL database instance. |
+| `frontend/` | The locked, ISR-optimized Next.js 16 frontend folder. Features `generateStaticParams` and rigid fetch cache policies. |
+| `backend/` | The standalone Payload 3.x backend workspace folder. Contains PostgreSQL schema files, RBAC access layers, and webhook configurations. |
+| `docs/research/` | Left at root to house the initial reconnaissance maps (`data-migration-map.json`). |
+| `docker-compose.yml` | The global coordinator managing the frontend, backend, and PostgreSQL containers. |
 
 ---
 
@@ -95,11 +95,9 @@ Upon a successful migration run, the tool outputs a fully scaffolded dual-engine
 ## Commands
 
 ```bash
-npm run dev       # Start Next.js frontend dev server
-npm run build     # Compile production Next.js frontend
-npm run lint      # ESLint check
-npm run typecheck # TypeScript check
-npm run check     # Run lint + typecheck + build
+cd frontend && npm run dev       # Start Next.js frontend dev server
+cd frontend && npm run build     # Compile production Next.js frontend
+cd frontend && npm run check     # Run lint + typecheck + build
 ```
 
 ### Docker Infrastructure
