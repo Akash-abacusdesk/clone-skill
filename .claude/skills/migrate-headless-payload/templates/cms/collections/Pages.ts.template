@@ -1,0 +1,137 @@
+// =============================================================================
+// Single Type Collection — TEMPLATE (Locked Layout)
+// =============================================================================
+// This template represents a page with a RIGID schema. The client can edit
+// field values but CANNOT create new pages, delete this page, or rearrange
+// sections. No dynamic zones, no blocks, no flexible content.
+//
+// The agent populates {{FIELDS}} from docs/research/data-migration-map.json.
+// =============================================================================
+
+import type { CollectionConfig } from 'payload';
+import { clientCannotCreateOrDelete } from '../access/rbac';
+
+export const Pages: CollectionConfig = {
+  slug: 'pages',
+
+  admin: {
+    useAsTitle: 'title',
+    description: 'Static pages with locked layouts. Content is editable; structure is not.',
+    defaultColumns: ['title', 'slug', 'updatedAt'],
+  },
+
+  // RBAC: clients can read and update, but CANNOT create or delete
+  access: clientCannotCreateOrDelete,
+
+  fields: [
+    // --- Identity ---
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+      maxLength: 120,
+      admin: {
+        description: 'Page title (used in admin list and meta tags)',
+      },
+    },
+    {
+      name: 'slug',
+      type: 'text',
+      required: true,
+      unique: true,
+      admin: {
+        readOnly: true,
+        description: 'URL slug — set once, never changed by clients',
+      },
+      index: true,
+    },
+    {
+      name: 'pageType',
+      type: 'select',
+      required: true,
+      admin: {
+        readOnly: true,
+        description: 'Locked page type — determines which frontend template renders this page',
+      },
+      options: [
+        // {{PAGE_TYPE_OPTIONS}}
+        // Example:
+        // { label: 'Home', value: 'home' },
+        // { label: 'About', value: 'about' },
+        // { label: 'Contact', value: 'contact' },
+        { label: 'Home', value: 'home' },
+        { label: 'About', value: 'about' },
+        { label: 'Contact', value: 'contact' },
+      ],
+    },
+
+    // --- Hero Section (common to most pages) ---
+    {
+      name: 'heroTitle',
+      type: 'text',
+      maxLength: 120,
+      admin: {
+        description: 'Main heading displayed in the hero banner',
+        condition: (_, siblingData) => Boolean(siblingData?.pageType),
+      },
+    },
+    {
+      name: 'heroSubtitle',
+      type: 'textarea',
+      maxLength: 300,
+      admin: {
+        description: 'Supporting text below the hero heading',
+      },
+    },
+    {
+      name: 'heroImage',
+      type: 'upload',
+      relationTo: 'media',
+      admin: {
+        description: 'Hero banner background or featured image',
+      },
+    },
+
+    // {{ADDITIONAL_FIELDS}}
+    // The agent injects page-specific fields here based on data-migration-map.json.
+    // Examples:
+    //
+    // {
+    //   name: 'visionStatement',
+    //   type: 'textarea',
+    //   maxLength: 500,
+    //   admin: { description: 'Company vision text on the About page' },
+    // },
+    // {
+    //   name: 'teamMembers',
+    //   type: 'array',
+    //   admin: { description: 'Team member cards' },
+    //   fields: [
+    //     { name: 'name', type: 'text', maxLength: 80, required: true },
+    //     { name: 'role', type: 'text', maxLength: 80 },
+    //     { name: 'photo', type: 'upload', relationTo: 'media' },
+    //     { name: 'bio', type: 'textarea', maxLength: 300 },
+    //   ],
+    // },
+
+    // --- SEO ---
+    {
+      name: 'metaTitle',
+      type: 'text',
+      maxLength: 70,
+      admin: {
+        description: 'SEO title tag (defaults to page title if empty)',
+      },
+    },
+    {
+      name: 'metaDescription',
+      type: 'textarea',
+      maxLength: 160,
+      admin: {
+        description: 'SEO meta description',
+      },
+    },
+  ],
+
+  timestamps: true,
+};

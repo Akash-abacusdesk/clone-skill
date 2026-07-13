@@ -1,0 +1,199 @@
+// =============================================================================
+// Payload API Client — TEMPLATE
+// =============================================================================
+// Shared fetch functions for the Next.js frontend to communicate with the
+// Payload CMS REST API. All functions use process.env.PAYLOAD_PUBLIC_SERVER_URL.
+//
+// ISR: Every fetch includes next.revalidate and next.tags for on-demand
+// revalidation triggered by the /api/revalidate webhook endpoint.
+// =============================================================================
+
+const PAYLOAD_URL = process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3001';
+const DEFAULT_REVALIDATE = 3600; // seconds (1 hour rigid ISR)
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface PayloadResponse<T> {
+  docs: T[];
+  totalDocs: number;
+  limit: number;
+  totalPages: number;
+  page: number;
+  pagingCounter: number;
+  hasPrevPage: boolean;
+  hasNextPage: boolean;
+  prevPage: number | null;
+  nextPage: number | null;
+}
+
+interface FetchOptions {
+  revalidate?: number | false;
+  tags?: string[];
+  draft?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Core fetch wrapper
+// ---------------------------------------------------------------------------
+
+async function payloadFetch<T>(
+  endpoint: string,
+  options: FetchOptions = {},
+): Promise<T> {
+  const { revalidate = DEFAULT_REVALIDATE, tags = [], draft = false } = options;
+
+  const url = `${PAYLOAD_URL}/api${endpoint}`;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (draft) {
+    headers['X-Payload-Draft'] = 'true';
+  }
+
+  const res = await fetch(url, {
+    headers,
+    next: {
+      revalidate: revalidate === false ? undefined : revalidate,
+      tags: tags.length > 0 ? tags : undefined,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Payload API error: ${res.status} ${res.statusText} — ${url}`,
+    );
+  }
+
+  return res.json() as Promise<T>;
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch a Single Type document by its slug.
+ * Used for pages like Home, About, Contact where there is exactly one document.
+ *
+ * @example
+ * const home = await fetchSingleType<HomePage>('pages', 'home');
+ */
+export async function fetchSingleType<T>(
+  collection: string,
+  slug: string,
+  options: FetchOptions = {},
+): Promise<T | null> {
+  const response = await payloadFetch<PayloadResponse<T>>(
+    `/${collection}?where[slug][equals]=${encodeURIComponent(slug)}&limit=1`,
+    {
+      ...options,
+      tags: [collection, `${collection}:${slug}`, ...(options.tags || [])],
+    },
+  );
+
+  return response.docs[0] ?? null;
+}
+
+/**
+ * Fetch a single Collection Type item by slug.
+ * Used for detail pages like /products/[slug].
+ *
+ * @example
+ * const product = await fetchCollectionItem<Product>('products', 'blue-widget');
+ */
+export async function fetchCollectionItem<T>(
+  collection: string,
+  slug: string,
+  options: FetchOptions = {},
+): Promise<T | null> {
+  const response = await payloadFetch<PayloadResponse<T>>(
+    `/${collection}?where[slug][equals]=${encodeURIComponent(slug)}&limit=1`,
+    {
+      ...options,
+      tags: [collection, `${collection}:${slug}`, ...(options.tags || [])],
+    },
+  );
+
+  return response.docs[0] ?? null;
+}
+
+/**
+ * Fetch a paginated list of Collection Type items.
+ * Used for index pages like /products (listing grid).
+ *
+ * @example
+ * const { docs, totalPages } = await fetchCollectionList<Product>('products', {
+ *   page: 1,
+ *   limit: 12,
+ *   sort: '-createdAt',
+ * });
+ */
+export async function fetchCollectionList<T>(
+  collection: string,
+  params: {
+    page?: number;
+    limit?: number;
+    sort?: string;
+    where?: Record<string, unknown>;
+  } = {},
+  options: FetchOptions = {},
+): Promise<PayloadResponse<T>> {
+  const { page = 1, limit = 12, sort = '-createdAt', where } = params;
+
+  let endpoint = `/${collection}?page=${page}&limit=${limit}&sort=${sort}`;
+
+  // Filter to only published items by default
+  endpoint += '&where[status][equals]=published';
+
+  // Append additional where clauses
+  if (where) {
+    Object.entries(where).forEach(([key, value]) => {
+      endpoint += `&where[${key}][equals]=${encodeURIComponent(String(value))}`;
+    });
+  }
+
+  return payloadFetch<PayloadResponse<T>>(endpoint, {
+    ...options,
+    tags: [collection, ...(options.tags || [])],
+  });
+}
+
+/**
+ * Fetch all slugs for a Collection Type.
+ * Used in generateStaticParams() for [slug] routes.
+ *
+ * @example
+ * export async function generateStaticParams() {
+ *   const slugs = await fetchAllSlugs('products');
+ *   return slugs.map((slug) => ({ slug }));
+ * }
+ */
+export async function fetchAllSlugs(collection: string): Promise<string[]> {
+  const response = await payloadFetch<PayloadResponse<{ slug: string }>>(
+    `/${collection}?where[status][equals]=published&limit=1000&depth=0`,
+    { revalidate: 300, tags: [collection] },
+  );
+
+  return response.docs.map((doc) => doc.slug).filter(Boolean);
+}
+
+/**
+ * Fetch a Global config by its slug.
+ * Used for site-wide data like header/footer config.
+ *
+ * @example
+ * const config = await fetchGlobal<SiteConfig>('site-config');
+ */
+export async function fetchGlobal<T>(
+  globalSlug: string,
+  options: FetchOptions = {},
+): Promise<T> {
+  return payloadFetch<T>(`/globals/${globalSlug}`, {
+    ...options,
+    tags: [globalSlug, ...(options.tags || [])],
+  });
+}

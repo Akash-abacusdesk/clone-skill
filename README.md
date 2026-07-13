@@ -1,170 +1,128 @@
-# AI Website Cloner Template
+# Website Reverse-Engineer & Headless Migration Template
 
 <a href="https://github.com/JCodesMore/ai-website-cloner-template/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a> <a href="https://github.com/JCodesMore/ai-website-cloner-template/stargazers"><img src="https://img.shields.io/github/stars/JCodesMore/ai-website-cloner-template?style=flat" alt="Stars" /></a> <a href="https://discord.gg/hrTSX5yTpB"><img src="https://img.shields.io/discord/1400896964597383279?label=discord" alt="Discord" /></a>
 
-A reusable template for reverse-engineering any website into a clean, modern Next.js codebase using AI coding agents. 
+This repository is an **automated headless migration engine**. It leverages AI coding agents to reverse-engineer any website and migrate it into a production-ready, twin-engine codebase built on **Next.js 16** (standalone output), **Tailwind CSS v4**, and **Payload CMS 3.x** backed by a **PostgreSQL** database layer.
 
-**Recommended: [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with Opus 4.8 for best results** — but works with a variety of AI coding agents.
+## Core Architecture Philosophy: Split-Control
 
-Point it at a URL, run `/clone-website`, and your AI agent will inspect the site, extract design tokens and assets, write component specs, and dispatch parallel builders to reconstruct every section.
+The migration process is governed by a strict **split-control architecture**:
+- **Frontend Engine**: The AI Agent codes pixel-perfect frontend layouts in Next.js. The CMS client has **0% UI layout control**. The presentation layer is fully locked, fetching data securely via the Payload REST API.
+- **Backend Data Container**: Payload CMS acts purely as a structured data container. It enforces strict Role-Based Access Control (RBAC) boundaries, explicitly blocking clients from creating or deleting single page layouts, ensuring the structure remains untouched while empowering them to manage dynamic collections and data points.
+- **Rigid ISR**: The frontend is fully optimized for Incremental Static Regeneration (ISR). The migration engine pre-renders all dynamic routes at build time via programmatic `generateStaticParams()` and invalidates cache on-demand via secure webhook integration on every CMS update.
 
-## Demo
+---
 
-[![Watch the demo](docs/design-references/comparison.png)](https://youtu.be/O669pVZ_qr0)
+## Step-by-Step Usage Instructions
 
-> Click the image above to watch the full demo on YouTube.
+> **Important:** Do not clone this template repository directly. Use GitHub's **Use this template** button to create your own copy first.
 
-## Quick Start
+After downloading and opening your new repository locally, run `npm install` to prepare your workspace.
 
-> **Important:** Start by making your own copy with GitHub's **Use this template** button. Do not clone this template repository directly for your website project, and do not open pull requests here with your generated website.
+### Step 1: Synchronize Skills
+Before invoking your AI agent, ensure the migration commands are synchronized across all supported platforms by running the multi-skill sync engine:
 
-1. **Create your own repository from this template**
+```bash
+node scripts/sync-skills.mjs
+```
+*This compiles both the `/clone-website` and `/migrate-headless-payload` skills into native formats for 9 different AI development platforms (Claude Code, Cursor, Windsurf, GitHub Copilot, Gemini, etc.).*
 
-   On the GitHub page for this project, click **Use this template**, then click **Create a new repository**.
+### Step 2: Execution Command
+Launch your preferred AI agent (e.g., `claude --chrome`) and invoke the headless migration command against your target URL:
 
-   Give your new repository a name, choose whether it should be public or private, then click **Create repository**. If GitHub shows an **Include all branches** option, you can leave it off.
+```bash
+/migrate-headless-payload <target-website-url>
+```
+*(Alternatively, you can run `/clone-website <target-url>` to generate only the static Next.js frontend without the CMS backend).*
 
-   This gives you your own separate project to work in, so your website changes stay in your account instead of coming back to the main template.
+### Step 3: The Phase 0 Storage Prompt
+Immediately upon execution, the agent will pause and prompt you to choose your asset handling environment:
 
-2. **Open your new repository on your computer**
+```text
+Configure File Handling Environment for this migration test run:
+  [local]  — Store uploads on local disk (cms/media/)
+  [r2]     — Store uploads in Cloudflare R2 bucket
+Enter choice (local / r2):
+```
+- Choosing **`local`** targets disk-based media volumes, keeping everything self-contained for local testing.
+- Choosing **`r2`** wires up the `@payloadcms/plugin-cloud-storage` adapter to route all media uploads to a production Cloudflare R2 storage bucket.
 
-   After GitHub creates your copy, open that new repository. Click **Code** and open or clone your new repository with your preferred coding tool.
+---
 
-   If you use the terminal, the command will look like this:
+## Output Artifacts Map
 
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/YOUR-NEW-REPOSITORY.git
-   cd YOUR-NEW-REPOSITORY
-   ```
+Upon a successful migration run, the tool outputs a fully scaffolded dual-engine architecture. Developers should look for the following artifacts:
 
-3. **Install dependencies**
-   ```bash
-   npm install
-   ```
-4. **Start your AI agent** — Claude Code recommended:
-   ```bash
-   claude --chrome
-   ```
-5. **Run the skill**:
-   ```
-   /clone-website <target-url1> [<target-url2> ...]
-   ```
-6. **Customize** (optional) — after the base clone is built, modify as needed
+| Output Artifact | Description |
+|-----------------|-------------|
+| `docs/research/data-migration-map.json` | The architectural classification breakdown mapping DOM elements to typed Payload schema definitions. |
+| `src/app/` | The locked, ISR-optimized Next.js frontend routes featuring programmatic `generateStaticParams` and rigid fetch cache policies. |
+| `cms/` | The standalone Payload 3.x backend workspace featuring locked Page schemas, active RBAC modules, and automated webhook seeding. |
+| `docker-compose.yml` | The unified multi-container system tracking the frontend service, standalone CMS service, and shared PostgreSQL database instance. |
 
-> Using a different agent? Open `AGENTS.md` for project instructions — most agents pick it up automatically.
+---
 
 ## Supported Platforms
 
-| Agent                                                         | Status                     |
-| ------------------------------------------------------------- | -------------------------- |
+| Agent | Status |
+| ----- | ------ |
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | **Recommended** — Opus 4.8 |
-| [Codex CLI](https://github.com/openai/codex)                  | Supported                  |
-| [OpenCode](https://opencode.ai/)                              | Supported                  |
-| [GitHub Copilot](https://github.com/features/copilot)         | Supported                  |
-| [Cursor](https://cursor.com/)                                 | Supported                  |
-| [Windsurf](https://codeium.com/windsurf)                      | Supported                  |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli)     | Supported                  |
-| [Cline](https://github.com/cline/cline)                       | Supported                  |
-| [Roo Code](https://github.com/RooCodeInc/Roo-Code)            | Supported                  |
-| [Continue](https://continue.dev/)                             | Supported                  |
-| [Amazon Q](https://aws.amazon.com/q/developer/)               | Supported                  |
-| [Augment Code](https://www.augmentcode.com/)                  | Supported                  |
-| [Aider](https://aider.chat/)                                  | Supported                  |
+| [Codex CLI](https://github.com/openai/codex) | Supported |
+| [OpenCode](https://opencode.ai/) | Supported |
+| [GitHub Copilot](https://github.com/features/copilot) | Supported |
+| [Cursor](https://cursor.com/) | Supported |
+| [Windsurf](https://codeium.com/windsurf) | Supported |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Supported |
+| [Cline](https://github.com/cline/cline) | Supported |
+| [Roo Code](https://github.com/RooCodeInc/Roo-Code) | Supported |
+| [Continue](https://continue.dev/) | Supported |
+| [Amazon Q](https://aws.amazon.com/q/developer/) | Supported |
+| [Augment Code](https://www.augmentcode.com/) | Supported |
+| [Aider](https://aider.chat/) | Supported |
 
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) 24+
-- An AI coding agent (see [Supported Platforms](#supported-platforms))
+---
 
 ## Tech Stack
 
-- **Next.js 16** — App Router, React 19, TypeScript strict
-- **shadcn/ui** — Radix primitives + Tailwind CSS v4
-- **Tailwind CSS v4** — oklch design tokens
-- **Lucide React** — default icons (replaced by extracted SVGs during cloning)
+- **Next.js 16** — App Router, React 19, TypeScript strict, Standalone build output
+- **Payload CMS 3.x** — Code-first configuration, Lexical editor, RBAC, ISR Webhooks
+- **PostgreSQL 16** — Shared database backend (`@payloadcms/db-postgres`)
+- **UI & Styling** — shadcn/ui, Tailwind CSS v4 (oklch design tokens)
+- **Cloud Storage** — Cloudflare R2 (optional, via `@payloadcms/plugin-cloud-storage`)
 
-## How It Works
-
-The `/clone-website` skill runs a multi-phase pipeline:
-
-1. **Reconnaissance** — screenshots, design token extraction, interaction sweep (scroll, click, hover, responsive)
-2. **Foundation** — updates fonts, colors, globals, downloads all assets
-3. **Component Specs** — writes detailed spec files (`docs/research/components/`) with exact computed CSS values, states, behaviors, and content
-4. **Parallel Build** — dispatches builder agents in git worktrees, one per section/component
-5. **Assembly & QA** — merges worktrees, wires up the page, runs visual diff against the original
-
-Each builder agent receives the full component specification inline — exact `getComputedStyle()` values, interaction models, multi-state content, responsive breakpoints, and asset paths. No guessing.
-
-## Use Cases
-
-- **Platform migration** — rebuild a site you own from WordPress/Webflow/Squarespace into a modern Next.js codebase
-- **Lost source code** — your site is live but the repo is gone, the developer left, or the stack is legacy. Get the code back in a modern format
-- **Learning** — deconstruct how production sites achieve specific layouts, animations, and responsive behavior by working with real code
-
-## Not Intended For
-
-- **Phishing or impersonation** — this project must not be used for deceptive purposes, impersonation, or any activity that breaks the law.
-- **Passing off someone's design as your own** — logos, brand assets, and original copy belong to their owners.
-- **Violating terms of service** — some sites explicitly prohibit scraping or reproduction. Check first.
-
-## Project Structure
-
-```
-src/
-  app/              # Next.js routes
-  components/       # React components
-    ui/             # shadcn/ui primitives
-    icons.tsx       # Extracted SVG icons
-  lib/utils.ts      # cn() utility
-  types/            # TypeScript interfaces
-  hooks/            # Custom React hooks
-public/
-  images/           # Downloaded images from target
-  videos/           # Downloaded videos from target
-  seo/              # Favicons, OG images
-docs/
-  research/         # Extraction output & component specs
-  design-references/ # Screenshots
-scripts/
-  sync-agent-rules.sh  # Regenerate agent instruction files
-  sync-skills.mjs      # Regenerate /clone-website for all platforms
-AGENTS.md           # Agent instructions (single source of truth)
-CLAUDE.md           # Claude Code config (imports AGENTS.md)
-GEMINI.md           # Gemini CLI config (imports AGENTS.md)
-```
+---
 
 ## Commands
 
 ```bash
-npm run dev    # Start dev server
-npm run build  # Production build
-npm run lint   # ESLint check
+npm run dev       # Start Next.js frontend dev server
+npm run build     # Compile production Next.js frontend
+npm run lint      # ESLint check
 npm run typecheck # TypeScript check
-npm run check  # Run lint + typecheck + build
+npm run check     # Run lint + typecheck + build
 ```
 
-### If using docker
+### Docker Infrastructure
+
+Run the full dual-engine stack (Frontend, CMS, Postgres) securely via Docker:
 
 ```bash
-docker compose up app --build # build and run the app
-docker compose up dev --build # run the app in dev mode on port 3001
+docker compose up -d           # Run the full production-ready stack
+docker compose up dev --build  # Run frontend in dev mode on port 3001
 ```
 
-## Updating for Other Platforms
+---
 
-Two source-of-truth files power all platform support. Edit the source, then run the sync script:
+## Updating Rules and Commands
 
-| What                   | Source of truth                         | Sync command                       |
-| ---------------------- | --------------------------------------- | ---------------------------------- |
-| Project instructions   | `AGENTS.md`                             | `bash scripts/sync-agent-rules.sh` |
-| `/clone-website` skill | `.claude/skills/clone-website/SKILL.md` | `node scripts/sync-skills.mjs`     |
+If you make manual adjustments to the AI agent rules or skill blueprints, regenerate the platform-specific output files using these commands:
 
-Each script regenerates the platform-specific copies automatically. Agents that read the source files natively need no regeneration.
+| Target | Source of Truth | Synchronization Command |
+|--------|-----------------|-------------------------|
+| Global Rules | `AGENTS.md` | `bash scripts/sync-agent-rules.sh` |
+| AI Skills | `.claude/skills/*/SKILL.md` | `node scripts/sync-skills.mjs` |
 
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=JCodesMore/ai-website-cloner-template&type=Date)](https://star-history.com/#JCodesMore/ai-website-cloner-template&Date)
+---
 
 ## License
 

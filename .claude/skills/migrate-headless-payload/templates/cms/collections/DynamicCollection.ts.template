@@ -1,0 +1,149 @@
+// =============================================================================
+// Dynamic Collection Type — TEMPLATE
+// =============================================================================
+// This template represents a repeating content type (Products, Services,
+// Portfolio, Blog Posts, etc.). The client CAN add/delete items freely,
+// but every item renders through the same locked [slug]/page.tsx template.
+//
+// The agent replaces {{COLLECTION_NAME}}, {{COLLECTION_SLUG}}, and {{FIELDS}}
+// based on docs/research/data-migration-map.json.
+// =============================================================================
+
+import type { CollectionConfig } from 'payload';
+import { fullCRUD } from '../access/rbac';
+
+// {{COLLECTION_NAME}} — replace with e.g. "Products", "Services", "Portfolio"
+export const DynamicCollection: CollectionConfig = {
+  slug: '{{COLLECTION_SLUG}}', // e.g. 'products', 'services', 'portfolio'
+
+  admin: {
+    useAsTitle: 'title',
+    description: '{{COLLECTION_DESCRIPTION}}',
+    defaultColumns: ['title', 'slug', 'status', 'updatedAt'],
+  },
+
+  // RBAC: clients have full CRUD — they can add, edit, and remove items
+  access: fullCRUD,
+
+  fields: [
+    // --- Identity ---
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+      maxLength: 120,
+      admin: {
+        description: 'Item title — also used to auto-generate the URL slug',
+      },
+    },
+    {
+      name: 'slug',
+      type: 'text',
+      required: true,
+      unique: true,
+      index: true,
+      admin: {
+        readOnly: true,
+        description: 'URL-safe identifier — auto-generated from title',
+      },
+      hooks: {
+        beforeValidate: [
+          ({ value, data }) => {
+            if (!value && data?.title) {
+              return data.title
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+            }
+            return value;
+          },
+        ],
+      },
+    },
+
+    // --- Status ---
+    {
+      name: 'status',
+      type: 'select',
+      required: true,
+      defaultValue: 'draft',
+      options: [
+        { label: 'Draft', value: 'draft' },
+        { label: 'Published', value: 'published' },
+      ],
+      admin: {
+        description: 'Only published items appear on the frontend',
+        position: 'sidebar',
+      },
+    },
+
+    // --- Featured Image ---
+    {
+      name: 'featuredImage',
+      type: 'upload',
+      relationTo: 'media',
+      required: true,
+      admin: {
+        description: 'Primary image shown in listings and detail pages',
+      },
+    },
+
+    // --- Description ---
+    {
+      name: 'description',
+      type: 'richText',
+      required: true,
+      admin: {
+        description: 'Full item description — rendered on the detail page',
+      },
+    },
+
+    // {{ADDITIONAL_FIELDS}}
+    // The agent injects collection-specific fields here.
+    // Examples for a Products collection:
+    //
+    // {
+    //   name: 'price',
+    //   type: 'number',
+    //   admin: { description: 'Product price in USD', step: 0.01 },
+    // },
+    // {
+    //   name: 'category',
+    //   type: 'select',
+    //   options: [
+    //     { label: 'Electronics', value: 'electronics' },
+    //     { label: 'Clothing', value: 'clothing' },
+    //   ],
+    // },
+    // {
+    //   name: 'gallery',
+    //   type: 'array',
+    //   fields: [
+    //     { name: 'image', type: 'upload', relationTo: 'media', required: true },
+    //     { name: 'caption', type: 'text', maxLength: 120 },
+    //   ],
+    // },
+
+    // --- SEO ---
+    {
+      name: 'metaTitle',
+      type: 'text',
+      maxLength: 70,
+      admin: {
+        description: 'SEO title (defaults to item title if empty)',
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'metaDescription',
+      type: 'textarea',
+      maxLength: 160,
+      admin: {
+        description: 'SEO meta description',
+        position: 'sidebar',
+      },
+    },
+  ],
+
+  timestamps: true,
+};

@@ -1,0 +1,144 @@
+// =============================================================================
+// Global Configuration — TEMPLATE
+// =============================================================================
+// Site-wide configuration fields: logo, company info, social links, etc.
+// These values appear in the header, footer, and contact sections.
+// The client can update values; placement and styling are coded in Next.js.
+// =============================================================================
+
+import type { GlobalConfig } from 'payload';
+import { isAdminOrEditor } from '../access/rbac';
+
+export const SiteConfig: GlobalConfig = {
+  slug: 'site-config',
+
+  admin: {
+    description: 'Global site configuration — logo, contact info, social links. Changes here affect the entire site.',
+  },
+
+  access: {
+    read: () => true,
+    update: isAdminOrEditor,
+  },
+
+  fields: [
+    // --- Branding ---
+    {
+      name: 'logo',
+      type: 'upload',
+      relationTo: 'media',
+      required: true,
+      admin: {
+        description: 'Site logo — displayed in the header and footer',
+      },
+    },
+    {
+      name: 'companyName',
+      type: 'text',
+      maxLength: 100,
+      required: true,
+      admin: {
+        description: 'Company or brand name',
+      },
+    },
+    {
+      name: 'tagline',
+      type: 'text',
+      maxLength: 200,
+      admin: {
+        description: 'Short tagline or slogan (optional)',
+      },
+    },
+
+    // --- Contact Information ---
+    {
+      name: 'email',
+      type: 'email',
+      admin: {
+        description: 'Primary contact email address',
+      },
+    },
+    {
+      name: 'phone',
+      type: 'text',
+      maxLength: 30,
+      admin: {
+        description: 'Primary phone number (include country code)',
+      },
+    },
+    {
+      name: 'address',
+      type: 'textarea',
+      maxLength: 300,
+      admin: {
+        description: 'Physical address (displayed in footer/contact page)',
+      },
+    },
+
+    // --- Social Links ---
+    {
+      name: 'socialLinks',
+      type: 'array',
+      admin: {
+        description: 'Social media profile links — displayed as icons in header/footer',
+      },
+      fields: [
+        {
+          name: 'platform',
+          type: 'select',
+          required: true,
+          options: [
+            { label: 'Facebook', value: 'facebook' },
+            { label: 'Twitter / X', value: 'twitter' },
+            { label: 'Instagram', value: 'instagram' },
+            { label: 'LinkedIn', value: 'linkedin' },
+            { label: 'YouTube', value: 'youtube' },
+            { label: 'TikTok', value: 'tiktok' },
+            { label: 'GitHub', value: 'github' },
+            { label: 'Pinterest', value: 'pinterest' },
+            { label: 'Threads', value: 'threads' },
+          ],
+        },
+        {
+          name: 'url',
+          type: 'text',
+          required: true,
+          admin: {
+            description: 'Full URL to the social profile',
+          },
+        },
+      ],
+    },
+
+    // --- Footer ---
+    {
+      name: 'copyrightText',
+      type: 'text',
+      maxLength: 200,
+      admin: {
+        description: 'Copyright notice in the footer (e.g., "© 2026 Company Name")',
+      },
+    },
+
+    // {{ADDITIONAL_GLOBAL_FIELDS}}
+    // The agent injects site-specific global fields here.
+    // Examples:
+    //
+    // {
+    //   name: 'googleAnalyticsId',
+    //   type: 'text',
+    //   maxLength: 20,
+    //   admin: { description: 'Google Analytics measurement ID (G-XXXXXXX)' },
+    // },
+    // {
+    //   name: 'announcementBar',
+    //   type: 'group',
+    //   fields: [
+    //     { name: 'enabled', type: 'checkbox', defaultValue: false },
+    //     { name: 'message', type: 'text', maxLength: 200 },
+    //     { name: 'linkText', type: 'text', maxLength: 40 },
+    //     { name: 'linkUrl', type: 'text' },
+    //   ],
+    // },
+  ],
+};

@@ -1,0 +1,133 @@
+// =============================================================================
+// ISR Revalidation API Route — TEMPLATE
+// =============================================================================
+// Next.js App Router route handler that accepts webhook POST requests from
+// Payload CMS and triggers on-demand ISR revalidation for the affected paths.
+//
+// Security: Requires a Bearer token matching REVALIDATION_SECRET.
+// =============================================================================
+
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { NextRequest, NextResponse } from 'next/server';
+
+const REVALIDATION_SECRET = process.env.REVALIDATION_SECRET;
+
+// ---------------------------------------------------------------------------
+// Path resolution map
+// ---------------------------------------------------------------------------
+// Maps Payload collection slugs to their frontend URL paths.
+// The agent generates this from docs/research/data-migration-map.json.
+
+const COLLECTION_PATH_MAP: Record<string, string> = {
+  // {{COLLECTION_PATHS}}
+  // Example:
+  // pages: '/',           // Single Types — resolved dynamically by slug
+  // products: '/products',
+  // services: '/services',
+  pages: '/',
+  products: '/products',
+  services: '/services',
+};
+
+const SINGLE_TYPE_SLUG_MAP: Record<string, string> = {
+  // {{SINGLE_TYPE_PATHS}}
+  // Maps page slug to its frontend path
+  // Example:
+  // home: '/',
+  // about: '/about',
+  // contact: '/contact',
+  home: '/',
+  about: '/about',
+  contact: '/contact',
+};
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  // 1. Validate authorization
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!REVALIDATION_SECRET || token !== REVALIDATION_SECRET) {
+    return NextResponse.json(
+      { error: 'Invalid or missing authorization token' },
+      { status: 401 },
+    );
+  }
+
+  // 2. Parse request body
+  let body: {
+    collection?: string;
+    slug?: string;
+    operation?: string;
+    global?: boolean;
+  };
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid JSON body' },
+      { status: 400 },
+    );
+  }
+
+  const { collection, slug, global: isGlobal } = body;
+
+  if (!collection) {
+    return NextResponse.json(
+      { error: 'Missing "collection" field in request body' },
+      { status: 400 },
+    );
+  }
+
+  // 3. Determine paths and execute revalidation in an insulated block
+  const revalidatedPaths: string[] = [];
+  
+  try {
+    if (isGlobal) {
+      // Global changes affect the entire site (header, footer, etc.)
+      revalidatePath('/', 'layout');
+      revalidatedPaths.push('/ (layout)');
+    } else if (collection === 'pages' && slug) {
+      // Single Type — revalidate the specific page
+      const pagePath = SINGLE_TYPE_SLUG_MAP[slug];
+      if (pagePath) {
+        revalidatePath(pagePath);
+        revalidatedPaths.push(pagePath);
+      }
+    } else if (COLLECTION_PATH_MAP[collection]) {
+      // Collection Type — revalidate the index and the specific item
+      const basePath = COLLECTION_PATH_MAP[collection];
+      revalidatePath(basePath); // index page
+      revalidatedPaths.push(basePath);
+
+      if (slug) {
+        const itemPath = `${basePath}/${slug}`;
+        revalidatePath(itemPath); // detail page
+        revalidatedPaths.push(itemPath);
+      }
+    }
+
+    // 4. Always revalidate the collection tag for cache invalidation
+    revalidateTag(collection);
+    if (slug) {
+      revalidateTag(`${collection}:${slug}`);
+    }
+  } catch (err) {
+    return NextResponse.json(
+      { error: 'Failed to revalidate cache paths/tags', details: String(err) },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    revalidated: true,
+    paths: revalidatedPaths,
+    collection,
+    slug: slug || null,
+    timestamp: Date.now(),
+  });
+}

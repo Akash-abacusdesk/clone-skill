@@ -70,7 +70,65 @@ For each distinct UI component, document:
 - [ ] **Image strategy** — CDN, lazy loading, srcset, WebP/AVIF
 - [ ] **Animation library** — Framer Motion, GSAP, CSS transitions only
 
-## Phase 5: Documentation Output
+## Phase 5: Data Architecture Analysis (migrate-headless-payload only)
+
+This phase classifies every page and content element into the split-control architecture buckets. It is ONLY performed when running `/migrate-headless-payload`.
+
+### Single Type vs Collection Type Classification
+- [ ] **Navigation audit** — Extract all nav links and classify each target page:
+  - Static path (e.g., `/about`, `/contact`) → **Single Type** — one document, locked layout
+  - Index listing (e.g., `/products`, `/services`) → **Collection Type** index page
+  - Detail page with slug pattern (e.g., `/products/blue-widget`) → **Collection Type** item template
+- [ ] **Repeating pattern detection** — Scan for 3+ items sharing identical DOM structure with different content (product cards, team members, portfolio items). These indicate Collection Types.
+- [ ] **Form detection** — Identify contact forms, newsletter signups. These need dedicated handling (not CMS-managed).
+
+### Content Field Mapping
+- [ ] **Text fields** — Map each heading, paragraph, label, and span to a named CMS field:
+  - Short text (< 120 chars) → `text` type with `maxLength`
+  - Medium text (120-500 chars) → `textarea` type with `maxLength`
+  - Long structured text (> 500 chars) → `richText` type (Lexical editor)
+- [ ] **Image fields** — Map each `<img>` and CSS background-image to an `upload` field (relationTo: 'media')
+- [ ] **Link fields** — Map each `<a>` to a `group` field with `{ label: text, url: text, openInNewTab: checkbox }`
+- [ ] **Array fields** — Map repeating sub-elements (feature cards, testimonials, team members) to `array` type fields with typed sub-fields
+- [ ] **Select fields** — Map any dropdown, tab set, or category system to `select` type fields with defined options
+
+### Global Configuration Detection
+- [ ] **Header** — Logo (upload), company name (text), navigation items (array)
+- [ ] **Footer** — Copyright text, secondary nav, social links (array of { platform: select, url: text })
+- [ ] **Contact info** — Email (email), phone (text), address (textarea)
+- [ ] **Social links** — Platform icons linking to external profiles
+
+### Field Naming Convention
+When naming CMS fields, use these rules:
+- camelCase (e.g., `heroTitle`, not `hero_title` or `HeroTitle`)
+- Descriptive and specific (e.g., `missionStatement`, not `text1`)
+- Include the section name as prefix for page-specific fields (e.g., `aboutHeroTitle`, `contactFormHeading`)
+- Use generic names for Collection Type fields (e.g., `title`, `description`, `featuredImage`)
+
+## Phase 6: Migration Documentation Output
+
+After inspection (when using `/migrate-headless-payload`), create these additional files in `docs/research/`:
+
+6. `data-migration-map.json` — Structured content classification:
+   ```json
+   {
+     "sourceUrl": "https://example.com",
+     "fileHandlingMode": "local | r2",
+     "singleTypes": [ { "name": "...", "slug": "...", "fields": [...] } ],
+     "collectionTypes": [ { "name": "...", "slug": "...", "itemFields": [...] } ],
+     "globals": [ { "name": "SiteConfig", "fields": [...] } ]
+   }
+   ```
+7. `payload-field-map.json` — DOM selector → Payload field path lookup:
+   ```json
+   {
+     ".hero h1": "pages.home.heroTitle",
+     ".hero p": "pages.home.heroSubtitle",
+     ".product-card .title": "products.title"
+   }
+   ```
+
+## Phase 5 (original): Documentation Output
 
 After inspection, create these files in `docs/research/`:
 1. `DESIGN_TOKENS.md` — All extracted colors, typography, spacing

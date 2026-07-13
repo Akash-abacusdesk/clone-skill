@@ -1,0 +1,145 @@
+// =============================================================================
+// Payload CMS 3.x Configuration — TEMPLATE
+// =============================================================================
+// This template is customized by the /migrate-headless-payload agent.
+// Variables wrapped in {{VARIABLE}} are replaced during code generation.
+//
+// Adapter: @payloadcms/db-postgres
+// Storage: Conditional — local disk or Cloudflare R2 based on FILE_HANDLING_MODE
+// =============================================================================
+
+import { buildConfig } from 'payload';
+import { postgresAdapter } from '@payloadcms/db-postgres';
+import { lexicalEditor } from '@payloadcms/richtext-lexical';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// {{COLLECTION_IMPORTS}}
+// Example:
+// import { Pages } from './collections/Pages';
+// import { Products } from './collections/Products';
+// import { Services } from './collections/Services';
+
+// {{GLOBAL_IMPORTS}}
+// Example:
+// import { SiteConfig } from './globals/SiteConfig';
+
+// {{CLOUD_STORAGE_IMPORT}}
+// Injected ONLY when FILE_HANDLING_MODE === 'r2':
+// import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage';
+// import { r2Adapter } from '@payloadcms/plugin-cloud-storage/r2';
+
+const filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(filename);
+
+// {{R2_ADAPTER_CONFIG}}
+// Injected ONLY when FILE_HANDLING_MODE === 'r2':
+// const r2Storage = r2Adapter({
+//   config: {
+//     endpoint: process.env.R2_ENDPOINT!,
+//     credentials: {
+//       accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+//       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+//     },
+//     region: 'auto',
+//   },
+//   bucket: process.env.R2_BUCKET!,
+// });
+
+export default buildConfig({
+  admin: {
+    user: 'users',
+    meta: {
+      titleSuffix: ' — {{SITE_NAME}} CMS',
+    },
+  },
+
+  editor: lexicalEditor(),
+
+  db: postgresAdapter({
+    pool: {
+      connectionString: process.env.DATABASE_URI!,
+    },
+  }),
+
+  collections: [
+    // {{COLLECTION_LIST}}
+    // Example:
+    // Pages,
+    // Products,
+    // Services,
+    {
+      slug: 'users',
+      auth: true,
+      admin: {
+        useAsTitle: 'email',
+      },
+      fields: [
+        {
+          name: 'role',
+          type: 'select',
+          required: true,
+          defaultValue: 'client',
+          options: [
+            { label: 'Admin', value: 'admin' },
+            { label: 'Editor', value: 'editor' },
+            { label: 'Client', value: 'client' },
+          ],
+          access: {
+            // Only admins can change roles
+            update: ({ req }) => req.user?.role === 'admin',
+          },
+        },
+      ],
+    },
+    {
+      slug: 'media',
+      upload: {
+        // {{UPLOAD_CONFIG}}
+        // When FILE_HANDLING_MODE === 'local':
+        //   staticDir: path.resolve(dirname, './media'),
+        // When FILE_HANDLING_MODE === 'r2':
+        //   (handled by cloudStoragePlugin below)
+        staticDir: path.resolve(dirname, './media'),
+        mimeTypes: ['image/*', 'video/*', 'application/pdf'],
+      },
+      fields: [
+        {
+          name: 'alt',
+          type: 'text',
+          required: true,
+        },
+      ],
+    },
+  ],
+
+  globals: [
+    // {{GLOBAL_LIST}}
+    // Example:
+    // SiteConfig,
+  ],
+
+  // {{PLUGINS}}
+  // When FILE_HANDLING_MODE === 'r2':
+  // plugins: [
+  //   cloudStoragePlugin({
+  //     collections: {
+  //       media: {
+  //         adapter: r2Storage,
+  //         disableLocalStorage: true,
+  //         generateFileURL: ({ filename }) =>
+  //           `${process.env.R2_PUBLIC_URL}/${filename}`,
+  //       },
+  //     },
+  //   }),
+  // ],
+  // When FILE_HANDLING_MODE === 'local':
+  plugins: [],
+
+  serverURL: process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3001',
+  secret: process.env.PAYLOAD_SECRET!,
+
+  typescript: {
+    outputFile: path.resolve(dirname, 'payload-types.ts'),
+  },
+});

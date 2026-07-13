@@ -1,0 +1,125 @@
+// =============================================================================
+// Webhook Configuration Seed — TEMPLATE
+// =============================================================================
+// This script registers Payload afterChange hooks on all collections and
+// globals to trigger ISR revalidation on the Next.js frontend whenever
+// a document is published or updated.
+//
+// Usage: Run once after initial Payload setup, or include in payload.config.ts
+//        as a global afterChange hook.
+// =============================================================================
+
+import type { CollectionAfterChangeHook, GlobalAfterChangeHook } from 'payload';
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const REVALIDATION_SECRET = process.env.REVALIDATION_SECRET || '';
+
+interface RevalidationPayload {
+  collection: string;
+  slug?: string;
+  operation: 'create' | 'update' | 'delete';
+  global?: boolean;
+}
+
+/**
+ * Sends a revalidation request to the Next.js frontend.
+ * Fails silently with console.error — CMS operations must never crash
+ * due to a frontend communication failure.
+ */
+async function triggerRevalidation(payload: RevalidationPayload): Promise<void> {
+  if (!REVALIDATION_SECRET) {
+    console.warn('[Webhook] REVALIDATION_SECRET not set — skipping revalidation');
+    return;
+  }
+
+  const url = `${FRONTEND_URL}/api/revalidate`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${REVALIDATION_SECRET}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(
+        `[Webhook] Revalidation failed (${response.status}): ${text}`,
+      );
+    } else {
+      console.log(
+        `[Webhook] Revalidated: ${payload.global ? 'global' : payload.collection}${payload.slug ? `/${payload.slug}` : ''}`,
+      );
+    }
+  } catch (error) {
+    console.error('[Webhook] Revalidation request failed:', error);
+  }
+}
+
+/**
+ * Collection afterChange hook factory.
+ * Attaches to any collection to trigger frontend ISR on document changes.
+ */
+export function createCollectionRevalidationHook(
+  collectionSlug: string,
+): CollectionAfterChangeHook {
+  return async ({ doc, operation }) => {
+    await triggerRevalidation({
+      collection: collectionSlug,
+      slug: doc?.slug as string | undefined,
+      operation: operation as RevalidationPayload['operation'],
+    });
+    return doc;
+  };
+}
+
+/**
+ * Global afterChange hook factory.
+ * Attaches to any global to trigger frontend ISR on configuration changes.
+ */
+export function createGlobalRevalidationHook(
+  globalSlug: string,
+): GlobalAfterChangeHook {
+  return async ({ doc }) => {
+    await triggerRevalidation({
+      collection: globalSlug,
+      operation: 'update',
+      global: true,
+    });
+    return doc;
+  };
+}
+
+// =============================================================================
+// Hook Registration Map
+// =============================================================================
+// The agent generates this map from docs/research/data-migration-map.json.
+// Each collection and global gets its own afterChange hook.
+//
+// Example usage in a collection config:
+//
+//   import { createCollectionRevalidationHook } from '../seed/webhook-config';
+//
+//   export const Products: CollectionConfig = {
+//     slug: 'products',
+//     hooks: {
+//       afterChange: [createCollectionRevalidationHook('products')],
+//     },
+//     // ...
+//   };
+//
+// Example usage in a global config:
+//
+//   import { createGlobalRevalidationHook } from '../seed/webhook-config';
+//
+//   export const SiteConfig: GlobalConfig = {
+//     slug: 'site-config',
+//     hooks: {
+//       afterChange: [createGlobalRevalidationHook('site-config')],
+//     },
+//     // ...
+//   };
+// =============================================================================

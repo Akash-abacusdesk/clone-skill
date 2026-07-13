@@ -1,0 +1,110 @@
+// =============================================================================
+// RBAC Access Control Module — TEMPLATE
+// =============================================================================
+// Centralized access control functions for the split-control architecture.
+//
+// Roles:
+//   admin   — full access to everything
+//   editor  — can read/update all content, cannot manage users or settings
+//   client  — can read/update all content, can create/delete Collection Types,
+//             CANNOT create/delete Single Types (Pages)
+//
+// Usage in collections:
+//   import { clientCannotCreateOrDelete, fullCRUD } from '../access/rbac';
+//   // Single Types:  access: clientCannotCreateOrDelete
+//   // Collection Types: access: fullCRUD
+// =============================================================================
+
+import type { Access, FieldAccess } from 'payload';
+
+// ---------------------------------------------------------------------------
+// Role check helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the authenticated user has the 'admin' role.
+ */
+export const isAdmin: Access = ({ req }) => {
+  return req.user?.role === 'admin';
+};
+
+/**
+ * Returns true if the authenticated user has 'admin' or 'editor' role.
+ */
+export const isAdminOrEditor: Access = ({ req }) => {
+  if (!req.user) return false;
+  return ['admin', 'editor'].includes(req.user.role as string);
+};
+
+/**
+ * Field-level access: only admins can modify this field.
+ */
+export const adminOnlyField: FieldAccess = ({ req }) => {
+  return req.user?.role === 'admin';
+};
+
+// ---------------------------------------------------------------------------
+// Collection-level access presets
+// ---------------------------------------------------------------------------
+
+/**
+ * Single Type access configuration.
+ *
+ * - read:   everyone (including unauthenticated — needed for frontend API calls)
+ * - update: any authenticated user
+ * - create: admin only — clients CANNOT create new Single Type documents
+ * - delete: admin only — clients CANNOT delete Single Type documents
+ *
+ * This ensures the page structure is immutable from the client's perspective.
+ * The admin seeds the initial documents (Home, About, Contact); clients only edit.
+ */
+export const clientCannotCreateOrDelete = {
+  read: (): boolean => true,
+  update: ({ req }: { req: { user?: { role?: string } | null } }): boolean => {
+    return Boolean(req.user);
+  },
+  create: ({ req }: { req: { user?: { role?: string } | null } }): boolean => {
+    return req.user?.role === 'admin';
+  },
+  delete: ({ req }: { req: { user?: { role?: string } | null } }): boolean => {
+    return req.user?.role === 'admin';
+  },
+};
+
+/**
+ * Collection Type access configuration.
+ *
+ * - read:   everyone (including unauthenticated)
+ * - update: any authenticated user
+ * - create: any authenticated user — clients CAN add new items
+ * - delete: any authenticated user — clients CAN remove items
+ *
+ * This allows the client to manage their inventory (products, services, etc.)
+ * while the page template that renders each item remains locked in code.
+ */
+export const fullCRUD = {
+  read: (): boolean => true,
+  update: ({ req }: { req: { user?: { role?: string } | null } }): boolean => {
+    return Boolean(req.user);
+  },
+  create: ({ req }: { req: { user?: { role?: string } | null } }): boolean => {
+    return Boolean(req.user);
+  },
+  delete: ({ req }: { req: { user?: { role?: string } | null } }): boolean => {
+    return Boolean(req.user);
+  },
+};
+
+/**
+ * Global access configuration.
+ *
+ * - read:   everyone
+ * - update: admin or editor only — clients cannot modify site-wide config
+ */
+export const globalAccess = {
+  read: (): boolean => true,
+  update: ({ req }: { req: { user?: { role?: string } | null } }): boolean => {
+    if (!req.user) return false;
+    return ['admin', 'editor'].includes(req.user.role as string);
+  },
+};

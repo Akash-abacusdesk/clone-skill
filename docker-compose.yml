@@ -12,11 +12,16 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      - PAYLOAD_PUBLIC_SERVER_URL=http://cms:3001
+      - REVALIDATION_SECRET=${REVALIDATION_SECRET}
     env_file:
       - path: .env.local
         required: false
       - path: .env
         required: false
+    depends_on:
+      cms:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
       interval: 30s
@@ -51,3 +56,73 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Payload CMS — standalone backend (port 3001)
+  # ─────────────────────────────────────────────────────────────────────
+  cms:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+    image: payload-cms:latest
+    container_name: payload-cms
+    restart: unless-stopped
+    ports:
+      - "${CMS_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - PAYLOAD_SECRET=${PAYLOAD_SECRET:-change-me-payload-secret}
+      - DATABASE_URI=postgresql://payload:payload@postgres:5432/payload
+      - PAYLOAD_PUBLIC_SERVER_URL=http://localhost:${CMS_PORT:-3001}
+      - FRONTEND_URL=http://app:3000
+      - REVALIDATION_SECRET=${REVALIDATION_SECRET}
+      # Cloudflare R2 (uncomment when FILE_HANDLING_MODE=r2)
+      # - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      # - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      # - R2_BUCKET=${R2_BUCKET}
+      # - R2_ENDPOINT=${R2_ENDPOINT}
+      # - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+    env_file:
+      - path: .env.local
+        required: false
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - cms_media:/app/media
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/access || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────────────
+  # PostgreSQL 16 — shared database for Payload CMS
+  # ─────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: payload-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: payload
+      POSTGRES_PASSWORD: payload
+      POSTGRES_DB: payload
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payload -d payload"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  pgdata:
+    driver: local
+  cms_media:
+    driver: local

@@ -1,7 +1,7 @@
 # AUTO-GENERATED from .claude/skills/clone-website/SKILL.md
 # Run `node scripts/sync-skills.mjs` to regenerate.
 
-description = "Reverse-engineer and clone any website as a pixel-perfect replica"
+description = "Reverse-engineer and clone one or more websites in one shot — extracts assets, CSS, and content sect"
 name = "clone-website"
 
 prompt = '''
